@@ -1,8 +1,15 @@
-let addToy = false;
 
 document.addEventListener("DOMContentLoaded", () => {
+  let addToy = false;
   const addBtn = document.querySelector("#new-toy-btn");
   const toyFormContainer = document.querySelector(".container");
+  const toyDiv = document.getElementById('toy-collection')
+  const form = document.getElementsByClassName('add-toy-form')[0]
+  // const form = document.querySelector('.add-toy-form')[0]
+  const URL = 'http://localhost:3000/toys'
+
+  form.addEventListener('click', addNewToy)
+
   addBtn.addEventListener("click", () => {
     // hide & seek with the form
     addToy = !addToy;
@@ -12,73 +19,82 @@ document.addEventListener("DOMContentLoaded", () => {
       toyFormContainer.style.display = "none";
     }
   });
-  getToys()
 
-  const form = document.querySelector('.add-toy-form')
-  form.addEventListener('submit', newToy)
-  
-});
-
-function getToys() {
-  const source = "http://localhost:3000/toys"
-  fetch(source)
-    .then(function(response){
-      // console.log(response)
-      return response.json()
-    })
-    .then(function(jsonStuff){
-      const toyColl = document.querySelector('#toy-collection')
-      toyColl.innerHTML = allToys(jsonStuff)
-      addToyListener()
-    })
-  }
-
-function addToyListener(){
-  const toys = document.querySelectorAll('.card')
-  toys.forEach((toy) => {
-    toy.querySelector('.like-btn').addEventListener('click', likeToy)
-  })
-}
-  
-function singleToy(toy){
-  return (
-    `<div class="card">
-      <h2>${toy.name}</h2>
-      <img src="${toy.image}" class="toy-avatar"/>
-      <p class='likes'> ${toy.likes} </p>
-      <button id="${toy.id}" class="like-btn"> Like <3</button>
-    </div>`
-    
-)}
-
-function allToys(toyArr){
-  return toyArr.map(singleToy).join('')
-}
-
-function newToy(e){
-  const source = "http://localhost:3000/toys"
-  e.preventDefault()
-  const nameVal = document.querySelector('input[name=name]').value
-  const imgVal = document.querySelector('input[name=image').value
-  const shinyToy = {
-    name: nameVal, 
-    image: imgVal,
-    likes: 0
-  }
-  fetch(source, {method: 'POST', headers:{
-      "Content-Type": "application/json",
-      Accept: "application/json"
-      }, body: JSON.stringify(shinyToy)
-    })
+  fetch(URL)
     .then(response => response.json())
-    .then((newObj) => {
-      document.querySelector('#toy-collection').innerHTML += singleToy(newObj)
-    })
-} 
+    .then(jsonStuff => populatePage(jsonStuff))
 
-function likeToy(e) {
-  const like = document.querySelector('.likes')
-  
-  console.log(e)
-}
+    function populatePage(toys){
+      // console.log(toys) //to prove that your stuff made it to the next fxn
+      toys.forEach(toy => {
+        createSingleToyElement(toy)
+      })
+    }
+
+    function createSingleToyElement(toy){
+      // console.log(toy) //to prove we see all the toys coming through
+      let newDiv = document.createElement('div')
+      newDiv.className = 'card'
+      newDiv.id = toy.id
+
+      let h2 = document.createElement('h2')
+      h2.innerText = toy.name 
+
+      let img = document.createElement('img')
+      img.src = toy.image 
+      img.className = 'toy-avatar'
+
+      let p = document.createElement('p')
+      p.innerText = `${toy.likes} likes`
+      
+      let button = document.createElement('button')
+      button.className = 'like-btn'
+      button.innerText = 'LOVES <3'
+      button.addEventListener('click', (e) => {
+
+        let newLikes = toy.likes + 1
+        const configObject = {
+          method: 'PATCH', 
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }, 
+          body: JSON.stringify({
+            'likes': newLikes
+          })
+        }
+        // finding that particular toy by restful routes
+        fetch(URL + '/' + toy.id, configObject)
+          .then(response => response.json())
+        // ++ before thing returns incremented value, ++ after thing returns original thing 
+          .then(jsonStuff => p.innerText = `${++toy.likes} LOVES`)
+      })
+
+      newDiv.append(h2, img, p, button)
+      toyDiv.appendChild(newDiv) //can be prepend if you want it to come at the top of page
+    }
+
+    function addNewToy(e){
+      e.preventDefault()
+      // let postData = {name: e.target.name.value, image: e.target.image.value, likes: 0}
+      
+      const configObject = {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }, 
+        body: JSON.stringify({
+          name: e.target.name.value, 
+          image: e.target.image.value, 
+          likes: 0}
+      })
+
+      fetch(URL, configObject)
+      .then(response => response.json())
+      .then(jsonStuff => createSingleToyElement(jsonStuff))
+    }
+
+
+})
 
