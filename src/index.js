@@ -1,14 +1,40 @@
 
-document.addEventListener("DOMContentLoaded", () => {
-  let addToy = false;
-  const addBtn = document.querySelector("#new-toy-btn");
-  const toyFormContainer = document.querySelector(".container");
-  const toyDiv = document.getElementById('toy-collection')
-  const form = document.getElementsByClassName('add-toy-form')[0]
-  // const form = document.querySelector('.add-toy-form')[0]
-  const URL = 'http://localhost:3000/toys'
 
-  form.addEventListener('click', addNewToy)
+document.addEventListener("DOMContentLoaded", () => {
+  let addToy = false; 
+  const toyBox = document.querySelector('#toy-collection')
+  const form = document.querySelector('.add-toy-form')
+  form.addEventListener('submit', (e) => handleSubmit(e))
+
+  const addBtn = document.querySelector('#new-toy-btn')
+  const toyFormContainer = document.querySelector('.container')
+
+  function getToys(){
+    fetch('http://localhost:3000/toys')
+    .then(res => res.json())
+    .then(toys => toys.forEach(toy => buildToys(toy)))
+  }
+  getToys()
+
+  function buildToys(toy){
+    let div = document.createElement('div')
+    let btn = document.createElement('button')
+
+    btn.addEventListener('click', () => updateLikes(toy))
+
+    btn.innerText = 'Like <3'
+
+    div.id = toy.id
+    div.className = 'card'
+    div.innerHTML = 
+    `
+    <h2>${toy.name}</h2>
+    <img class='toy-avatar' src='${toy.image}'/>
+    <p>${toy.likes} likes</p>
+    `
+    div.appendChild(btn)
+    toyBox.appendChild(div)
+  }
 
   addBtn.addEventListener("click", () => {
     // hide & seek with the form
@@ -18,82 +44,60 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       toyFormContainer.style.display = "none";
     }
-  });
-
-  fetch(URL)
-    .then(response => response.json())
-    .then(jsonStuff => populatePage(jsonStuff))
-
-    function populatePage(toys){
-      // console.log(toys) //to prove that your stuff made it to the next fxn
-      toys.forEach(toy => {
-        createSingleToyElement(toy)
-      })
+  })
+   
+  function handleSubmit(e){
+    e.preventDefault()
+    let toy = {
+      name: e.target.name.value, 
+      image: e.target.image.value, 
+      likes: 0
     }
+    postToy(toy)
+  }
 
-    function createSingleToyElement(toy){
-      // console.log(toy) //to prove we see all the toys coming through
-      let newDiv = document.createElement('div')
-      newDiv.className = 'card'
-      newDiv.id = toy.id
+  function postToy(toy){
+    fetch('http://localhost:3000/toys', {
+      method: 'POST', 
+      headers: {
+        'Content-Type':'application/json',
+        'Accept':'application/json'
+      }, 
+      body: JSON.stringify(toy)
+    })
+  .then(res => res.json())
+  .then(toy => buildToys(toy))
+  }
 
-      let h2 = document.createElement('h2')
-      h2.innerText = toy.name 
+  function updateLikes(toy){
+    toy.likes++
+    fetch(`http://localhost:3000/toys/${toy.id}`, {
+      method: 'PATCH', 
+      headers: {
+        'Content-Type':'application/json',
+        'Accept':'application/json'
+      }, 
+      body: JSON.stringify(toy)
+    })
+    .then(res => res.json())
+    .then(updatedToy => {
+      let oldToy = document.getElementById(toy.id)
+      let btn = document.createElement('button')
+      oldToy.innerHTML = 
+        `
+        <h2>${updatedToy.name}</h2>   
+        <img src=${updatedToy.image} class="toy-avatar" />
+        <p>${updatedToy.likes} likes</p>
+        `
+      btn.textContent = 'Like <3'
+      btn.className = 'like-btn'
+      btn.addEventListener('click', () => updateLikes(toy))
+      oldToy.append(btn)
+    })
+  
+  }
 
-      let img = document.createElement('img')
-      img.src = toy.image 
-      img.className = 'toy-avatar'
-
-      let p = document.createElement('p')
-      p.innerText = `${toy.likes} likes`
-      
-      let button = document.createElement('button')
-      button.className = 'like-btn'
-      button.innerText = 'LOVES <3'
-      button.addEventListener('click', (e) => {
-
-        let newLikes = toy.likes + 1
-        const configObject = {
-          method: 'PATCH', 
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }, 
-          body: JSON.stringify({
-            'likes': newLikes
-          })
-        }
-        // finding that particular toy by restful routes
-        fetch(URL + '/' + toy.id, configObject)
-          .then(response => response.json())
-        // ++ before thing returns incremented value, ++ after thing returns original thing 
-          .then(jsonStuff => p.innerText = `${++toy.likes} LOVES`)
-      })
-
-      newDiv.append(h2, img, p, button)
-      toyDiv.appendChild(newDiv) //can be prepend if you want it to come at the top of page
-    }
-
-    function addNewToy(e){
-      e.preventDefault()
-      // let postData = {name: e.target.name.value, image: e.target.image.value, likes: 0}
-      
-      const configObject = {
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }, 
-        body: JSON.stringify({
-          name: e.target.name.value, 
-          image: e.target.image.value, 
-          likes: 0}
-      })
-
-      fetch(URL, configObject)
-      .then(response => response.json())
-      .then(jsonStuff => createSingleToyElement(jsonStuff))
-    }
+  
 
 
 })
